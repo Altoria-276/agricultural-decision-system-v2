@@ -1,0 +1,11 @@
+init_data: [0.5, 0.5, 0.5, 0.5, 0.5]
+filter_threshold: 0.6
+datasets:
+  path: "data/决策算法测试数据.xlsx"
+  sence_columns: ["Cdtotal", "CECsoil", "ECsoil", "pHsoil", "SOM"]
+  process_columns: ["TPV", "DosageBC", "Time"]
+  type_columns: ["Type"]
+  result_columns: ["Cdreduction rate"]
+train:
+  test_size: 0.2
+  random_state: 42
