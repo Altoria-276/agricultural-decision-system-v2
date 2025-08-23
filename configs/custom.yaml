@@ -1,2 +1,5 @@
-init_data: [5, 14.98, 1.3320399999999983, 7.77542, 19.02706897]
+init_data: [5, 5, 5, 5, 5]
 filter_threshold: 0.6
+
+search_params_threshold: 10
+search_params_num_iter: 4
