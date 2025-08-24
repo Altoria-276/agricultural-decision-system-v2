@@ -65,7 +65,8 @@ class RegressionModel:
         self.y = data[target]
         self.test_size = test_size
         self.random_state = random_state
-        self.scaler = StandardScaler().set_output(transform="pandas")
+        self.scaler_x = StandardScaler().set_output(transform="pandas")
+        self.scaler_y = StandardScaler().set_output(transform="pandas")
         self.model = self.__load_model(model)
         self.is_trained = False
         self.shap_values = None
@@ -101,18 +102,23 @@ class RegressionModel:
         X_train, X_test, y_train, y_test = train_test_split(self.X, self.y, test_size=self.test_size, random_state=self.random_state)
 
         # 训练模型
-        X_train_scaled = self.scaler.fit_transform(X_train)
-        self.model.fit(X_train_scaled, y_train)
+        X_train_scaled = self.scaler_x.fit_transform(X_train)
+        y_train_scaled = self.scaler_y.fit_transform(y_train)
+        self.model.fit(X_train_scaled, y_train_scaled)
 
         # 进行预测
-        X_test_scaled = self.scaler.transform(X_test)
-        y_test_pred = self.model.predict(X_test_scaled)
-        y_train_pred = self.model.predict(X_train_scaled)
+        X_test_scaled = self.scaler_x.transform(X_test)
+        y_test_scaled = self.scaler_y.transform(y_test)
+        y_test_scaled_pred = self.model.predict(X_test_scaled)
+        y_train_scaled_pred = self.model.predict(X_train_scaled)
 
         # 计算评估指标
-        rmse = root_mean_squared_error(y_test, y_test_pred)
-        mae = mean_absolute_error(y_test, y_test_pred)
-        r2 = r2_score(y_test, y_test_pred)
+        rmse = root_mean_squared_error(y_test_scaled, y_test_scaled_pred)
+        mae = mean_absolute_error(y_test_scaled, y_test_scaled_pred)
+        r2 = r2_score(y_test_scaled, y_test_scaled_pred)
+
+        y_train_pred = self.scaler_y.inverse_transform(y_train_scaled_pred)
+        y_test_pred = self.scaler_y.inverse_transform(y_test_scaled_pred)
 
         # 存储结果
         self.results = {
@@ -146,7 +152,7 @@ class RegressionModel:
         X_new = new_data[self.feature]
 
         # 归一化
-        X_new_scaled = self.scaler.transform(X_new)
+        X_new_scaled = self.scaler_x.transform(X_new)
 
         # 预测
         predictions = self.model.predict(X_new_scaled)
@@ -164,7 +170,7 @@ class RegressionModel:
             raise ValueError("模型未训练，请先调用 train_and_evaluate_model 方法。")
 
         if not self.shap_values:
-            X_scaled = self.scaler.transform(self.X)
+            X_scaled = self.scaler_x.transform(self.X)
             explainer = shap.Explainer(self.model.predict, X_scaled)
             self.shap_values = explainer(X_scaled)
 
@@ -175,7 +181,7 @@ class RegressionModel:
         绘制基于 SHAP 值的特征重要性图。
         """
         if not self.shap_values:
-            X_scaled = self.scaler.transform(self.X)
+            X_scaled = self.scaler_x.transform(self.X)
             explainer = shap.Explainer(self.model.predict, X_scaled)
             self.shap_values = explainer(X_scaled)
 
