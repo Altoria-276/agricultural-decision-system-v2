@@ -89,7 +89,7 @@ def search_parameters(
         )
 
         # 4. 预测
-        predictions = regression_model.predict(expanded_dataset)
+        predictions = regression_model.predict_inverse_transform(expanded_dataset)
 
         # 5. 选择最高的 5 条数据用于下一轮迭代
         k = min(5, len(predictions))

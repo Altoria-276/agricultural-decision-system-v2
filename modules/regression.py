@@ -135,9 +135,9 @@ class RegressionModel:
 
         return self.results
 
-    def predict(self, new_data: pd.DataFrame) -> np.ndarray:
+    def predict_raw(self, new_data: pd.DataFrame) -> np.ndarray:
         """
-        使用训练好的模型对新数据进行预测。
+        使用训练好的模型对新数据进行预测。返回原始预测值（无逆归一化）。
 
         Args:
             new_data (pd.DataFrame): 新输入的数据（包含所有特征）
@@ -150,13 +150,35 @@ class RegressionModel:
 
         # 提取训练时的特征列
         X_new = new_data[self.feature]
-
         # 归一化
         X_new_scaled = self.scaler_x.transform(X_new)
-
         # 预测
         predictions = self.model.predict(X_new_scaled)
 
+        return predictions
+    
+    def predict_inverse_transform(self, new_data: pd.DataFrame) -> np.ndarray:
+        """
+        使用训练好的模型对新数据进行预测。返回逆归一化后的预测值。
+
+        Args:
+            new_data (pd.DataFrame): 新输入的数据（包含所有特征）
+
+        Returns:
+            np.ndarray: 预测结果
+        """
+        if not self.is_trained:
+            raise ValueError("模型未训练，请先调用 train_and_evaluate_model 方法。")
+
+        # 提取训练时的特征列
+        X_new = new_data[self.feature]
+        # 归一化
+        X_new_scaled = self.scaler_x.transform(X_new)
+        # 预测
+        predictions = self.model.predict(X_new_scaled)
+        # 逆归一化
+        predictions = self.scaler_y.inverse_transform(predictions)
+        
         return predictions
 
     def shap_importance(self):

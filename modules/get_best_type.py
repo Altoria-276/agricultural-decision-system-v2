@@ -26,7 +26,7 @@ def get_best_type(models: dict, types: list[str], input_data: list[float], filte
     for t in types:
         subset = filtered_dataset[filtered_dataset["Type"] == t]
         # 直接用模型预测（内部会自动选择所需特征）
-        score = models[t].predict(subset).mean()
+        score = models[t].predict_inverse_transform(subset).mean()
         scores[t] = score
 
     # 3. 返回得分最高的类型
