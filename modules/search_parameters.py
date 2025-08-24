@@ -3,6 +3,7 @@ import numpy as np
 from modules.regression import RegressionModel
 from itertools import product
 
+""" 废弃
 def expand_dataset(dataset, target_cols, quantile_levels=[0.05,0.5,0.95]):
     # 收集每列的分位值
     col_values = [dataset[col].quantile(quantile_levels).values for col in target_cols]
@@ -15,7 +16,34 @@ def expand_dataset(dataset, target_cols, quantile_levels=[0.05,0.5,0.95]):
     for col in non_target_cols:
         expanded[col] = dataset.iloc[0][col]
     return expanded
+"""
 
+def expand_dataset(dataset, target_cols, scales=[0.05, 0.5, 0.95]):
+    expanded_rows = []
+    
+    for _, row in dataset.iterrows():
+        # 针对当前行，计算 target_cols 在不同 scale 下的值
+        scaled_values = [
+            [row[col] * s for s in scales] 
+            for col in target_cols
+        ]
+        
+        # 笛卡尔积
+        combos = list(product(*scaled_values))
+        
+        # 生成 DataFrame
+        expanded = pd.DataFrame(combos, columns=target_cols)
+        
+        # 复制非 target 列
+        for col in dataset.columns:
+            if col not in target_cols:
+                expanded[col] = row[col]
+        
+        expanded_rows.append(expanded)
+    
+    # 合并所有行的扩展结果
+    expanded_dataset = pd.concat(expanded_rows, ignore_index=True)
+    return expanded_dataset
 
 def search_parameters(
     regression_model, 
