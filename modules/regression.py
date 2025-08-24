@@ -117,8 +117,8 @@ class RegressionModel:
         mae = mean_absolute_error(y_test_scaled, y_test_scaled_pred)
         r2 = r2_score(y_test_scaled, y_test_scaled_pred)
 
-        y_train_pred = self.scaler_y.inverse_transform(y_train_scaled_pred)
-        y_test_pred = self.scaler_y.inverse_transform(y_test_scaled_pred)
+        y_train_pred = self.scaler_y.inverse_transform(y_train_scaled_pred.reshape(-1, 1))
+        y_test_pred = self.scaler_y.inverse_transform(y_test_scaled_pred.reshape(-1, 1))
 
         # 存储结果
         self.results = {
