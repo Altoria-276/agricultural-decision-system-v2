@@ -177,9 +177,9 @@ class RegressionModel:
         # 预测
         predictions = self.model.predict(X_new_scaled)
         # 逆归一化
-        predictions = self.scaler_y.inverse_transform(predictions)
+        predictions = self.scaler_y.inverse_transform(predictions.reshape(-1, 1))
         
-        return predictions
+        return predictions.reshape(-1)
 
     def shap_importance(self):
         """
