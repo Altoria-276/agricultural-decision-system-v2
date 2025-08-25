@@ -70,6 +70,7 @@ class RegressionModel:
         self.model = self.__load_model(model)
         self.is_trained = False
         self.shap_values = None
+        self.corr_matrix = None
 
     def __load_model(self, model: str):
         if model == "Ridge":
@@ -156,7 +157,7 @@ class RegressionModel:
         predictions = self.model.predict(X_new_scaled)
 
         return predictions
-    
+
     def predict_inverse_transform(self, new_data: pd.DataFrame) -> np.ndarray:
         """
         使用训练好的模型对新数据进行预测。返回逆归一化后的预测值。
@@ -178,7 +179,7 @@ class RegressionModel:
         predictions = self.model.predict(X_new_scaled)
         # 逆归一化
         predictions = self.scaler_y.inverse_transform(predictions.reshape(-1, 1))
-        
+
         return predictions.reshape(-1)
 
     def shap_importance(self):
@@ -219,6 +220,41 @@ class RegressionModel:
 
         plt.show()
 
+        plt.close()
+        return img_path
+
+    def correlation_matrix(self) -> pd.DataFrame:
+        """
+        计算特征之间的相关性矩阵
+
+        Returns:
+            pd.DataFrame: 特征间的相关性矩阵
+        """
+
+        if self.corr_matrix is None:
+            self.corr_matrix = self.X.corr()
+            self.corr_matrix = self.corr_matrix.fillna(0)  # 先将所有 NaN 填为 0
+            np.fill_diagonal(self.corr_matrix.values, 1)  # 再将对角线设为 1
+
+        return self.corr_matrix
+
+    def plot_correlation_matrix(self) -> str:
+        """
+        绘制相关性矩阵热力图
+
+        Returns:
+            str: 保存的图片路径
+        """
+
+        fig, ax = plt.subplots(figsize=(12, 10))
+        sns.heatmap(self.correlation_matrix(), annot=True, cmap="coolwarm", fmt=".2f", ax=ax)
+        ax.set_title("特征相关性矩阵热力图")
+        ax.set_xlabel("特征")
+        ax.set_ylabel("特征")
+
+        img_path = os.path.join(get_temp_image_path(), "correlation_matrix.png")
+        fig.savefig(img_path)
+        plt.show()
         plt.close()
         return img_path
 
