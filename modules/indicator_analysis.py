@@ -16,6 +16,12 @@ def select_variables(correlation_matrix, shapley_values, types, variable_names, 
         selected_corr_matrix: 筛选出的m个变量的相关性矩阵
         selected_variable_names: 筛选出的m个变量的变量名 # todo 可选？
     """
+    # 将 list 转为 numpy 数组
+    shapley_values = np.array(shapley_values)
+   
+    if shapley_values.ndim == 2:
+        shapley_values = np.nanmean(np.abs(shapley_values), axis=0)
+
     # Step 1: 找出 S 和 P 中 Shapley 值最大的索引
     s_indices = [i for i, t in enumerate(types) if t == 'S']
     p_indices = [i for i, t in enumerate(types) if t == 'P']
@@ -26,12 +32,15 @@ def select_variables(correlation_matrix, shapley_values, types, variable_names, 
     max_s_index = s_indices[np.argmax([shapley_values[i] for i in s_indices])]
     max_p_index = p_indices[np.argmax([shapley_values[i] for i in p_indices])]
 
+    selected_indices=[]
+
     if shapley_values[max_s_index] > shapley_values[max_p_index]:
         selected_indices = [max_s_index, max_p_index]
     else:
         selected_indices = [max_p_index, max_s_index]
 
     # Step 2: 剩余变量按 Shapley 值降序排列（排除已选的两个）
+
     remaining_indices = [i for i in np.argsort(-shapley_values) if i not in selected_indices]
 
     # Step 3: 逐步筛选剩余变量
@@ -40,7 +49,7 @@ def select_variables(correlation_matrix, shapley_values, types, variable_names, 
             break
         valid = True
         for sel in selected_indices:
-            if abs(correlation_matrix[sel, idx]) > threshold_t:
+            if abs(correlation_matrix.iloc[sel, idx]) > threshold_t:
                 valid = False
                 break
         if valid:
@@ -51,7 +60,7 @@ def select_variables(correlation_matrix, shapley_values, types, variable_names, 
         selected_indices.append(remaining_indices.pop(0))
 
     # Step 5: 构建输出
-    selected_corr_matrix = correlation_matrix[np.ix_(selected_indices, selected_indices)]
+    selected_corr_matrix = correlation_matrix.iloc[selected_indices, selected_indices]
     selected_variable_names = [variable_names[i] for i in selected_indices]
 
     return selected_corr_matrix, selected_variable_names

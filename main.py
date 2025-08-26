@@ -8,10 +8,10 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 from modules.data_filter import data_filter
 from modules.regression import find_best_model, RegressionModel, plot_multi_types
-from modules.select_matrix import SelectMatrix
-
+from modules.select_matrix import SelectMatrix 
 from modules.get_best_type import get_best_type
 from modules.search_parameters import search_parameters
+from modules.indicator_analysis import select_variables
 
 
 def main():
@@ -91,8 +91,16 @@ def main():
                 sorted_columns = [(sence_columns + process_columns)[i] for i in indices]
                 sorted_importances = [importances[i] for i in indices]
 
-                print(sorted_columns)
-                print(sorted_importances)
+                all_feat=sence_columns + process_columns
+                sp_types = ['S' if c in sence_columns else 'P' for c in all_feat]
+                selected_corr_matrix, selected_feature_names = select_variables(
+                    correlation_matrix=corr,
+                    shapley_values=shap_values,
+                    types=sp_types,
+                    variable_names=all_feat,
+                    m=config.get("select_variables_max_num"),            # 
+                    threshold_t=config.get("select_variables_threshold")
+                )
 
                 pass
 
