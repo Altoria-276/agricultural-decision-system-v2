@@ -1,8 +1,10 @@
 import re
 from matplotlib.pylab import f
-import shap
+from shap import Explanation
 from configs import Config
 import pandas as pd
+import numpy as np
+
 from sklearn.preprocessing import StandardScaler
 from modules.data_filter import data_filter
 from modules.regression import find_best_model, RegressionModel, plot_multi_types
@@ -81,7 +83,16 @@ def main():
                 # TODO
 
                 corr = models[model_select].correlation_matrix()
-                shap = models[model_select].shap_importance()
+                shap_values = models[model_select].shap_importance().values
+
+                importances = np.abs(shap_values).mean(0)
+                indices = np.argsort(importances)[::-1]
+
+                sorted_columns = [(sence_columns + process_columns)[i] for i in indices]
+                sorted_importances = [importances[i] for i in indices]
+
+                print(sorted_columns)
+                print(sorted_importances)
 
                 pass
 
