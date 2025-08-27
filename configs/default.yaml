@@ -9,3 +9,8 @@ datasets:
 train:
   test_size: 0.2
   random_state: 42
+
+search_params_threshold: 10
+search_params_num_iter: 4
+select_variables_threshold: 0.5
+select_variables_max_num: 5

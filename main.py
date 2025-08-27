@@ -8,10 +8,14 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 from modules.data_filter import data_filter
 from modules.regression import find_best_model, RegressionModel, plot_multi_types
-from modules.select_matrix import SelectMatrix 
+from modules.select_matrix import SelectMatrix
 from modules.get_best_type import get_best_type
 from modules.search_parameters import search_parameters
 from modules.indicator_analysis import select_variables
+
+import warnings
+
+warnings.filterwarnings("ignore")
 
 
 def main():
@@ -49,16 +53,16 @@ def main():
     best_models = {}  # 保存各类别最优模型
 
     # test
-    selectMatrix = SelectMatrix(
-        sence_columns,
-        process_columns,
-        types,
-        [
-            [1, 1, 1, 0, 0, 1, 1, 0],
-            [0, 1, 1, 1, 0, 0, 1, 1],
-            [0, 0, 1, 1, 1, 1, 0, 1],
-        ][: len(types)],
-    )
+    # selectMatrix = SelectMatrix(
+    #     sence_columns,
+    #     process_columns,
+    #     types,
+    #     [
+    #         [1, 1, 1, 0, 0, 1, 1, 0],
+    #         [0, 1, 1, 1, 0, 0, 1, 1],
+    #         [0, 0, 1, 1, 1, 1, 0, 1],
+    #     ][: len(types)],
+    # )
 
     while modified:
         for type in types:
@@ -91,18 +95,23 @@ def main():
                 sorted_columns = [(sence_columns + process_columns)[i] for i in indices]
                 sorted_importances = [importances[i] for i in indices]
 
-                all_feat=sence_columns + process_columns
-                sp_types = ['S' if c in sence_columns else 'P' for c in all_feat]
+                all_feat = sence_columns + process_columns
+                sp_types = ["S" if c in sence_columns else "P" for c in all_feat]
                 selected_corr_matrix, selected_feature_names = select_variables(
                     correlation_matrix=corr,
                     shapley_values=shap_values,
                     types=sp_types,
                     variable_names=all_feat,
-                    m=config.get("select_variables_max_num"),            # 
-                    threshold_t=config.get("select_variables_threshold")
+                    m=config.get("select_variables_max_num"),  #
+                    threshold_t=config.get("select_variables_threshold"),
                 )
 
-                pass
+                selectMatrix = SelectMatrix(
+                    sence_columns,
+                    process_columns,
+                    types,
+                    selected_columns=selected_feature_names,
+                )
 
             selected_colums = selectMatrix[type]
 
@@ -117,9 +126,9 @@ def main():
 
             type_results[type] = regression_model.train_and_evaluate_model()
             best_models[type] = regression_model  # 保存各类别最优模型
-            # regression_model.plot_shap_importance()
+            regression_model.plot_shap_importance()
 
-        # plot_multi_types(type_results)
+        plot_multi_types(type_results)
         pre_select = True
         modified = selectMatrix.interactive_edit()
 

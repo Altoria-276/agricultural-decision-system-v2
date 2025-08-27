@@ -4,23 +4,54 @@ import numpy as np
 
 class SelectMatrix:
 
-    def __init__(self, sence_columns: list[str], process_columns: list[str], types: list[str], data: list[list[int]]):
+    def __init__(
+        self,
+        sence_columns: list[str],
+        process_columns: list[str],
+        types: list[str],
+        selected_columns: list[str] = None,
+        data: list[list[int]] = None,
+    ):
+        """
+        初始化选择矩阵。
+
+        参数:
+            sence_columns (list[str]): 环境因素列名列表
+            process_columns (list[str]): 处理因素列名列表
+            types (list[str]): 类型列表
+            selected_columns (list[str], 可选): 初始选中的列名列表，默认 None
+            data (list[list[int]], 可选): 初始选择矩阵数据，默认 None
+        """
 
         self.sence_columns = sence_columns
         self.process_columns = process_columns
         self.types = types
-
-        # 检查 data 的维度是否匹配
         expected_columns = len(sence_columns) + len(process_columns)
-        if len(data) != len(types):
-            raise ValueError(f"data 的行数 ({len(data)}) 与 types 的数量 ({len(types)}) 不匹配")
-        for row in data:
-            if len(row) != expected_columns:
-                raise ValueError(
-                    f"data 的每一行应有 {expected_columns} 列（{len(sence_columns) + len(process_columns)} 列），但发现为 {len(row)} 列"
-                )
 
-        self.matrix_df = pd.DataFrame(np.array(data), index=types, columns=self.sence_columns + self.process_columns)
+        if data is not None:
+            # 检查 data 的维度是否匹配
+            if len(data) != len(types):
+                raise ValueError(f"data 的行数 ({len(data)}) 与 types 的数量 ({len(types)}) 不匹配")
+            for row in data:
+                if len(row) != expected_columns:
+                    raise ValueError(
+                        f"data 的每一行应有 {expected_columns} 列（{len(sence_columns) + len(process_columns)} 列），但发现为 {len(row)} 列"
+                    )
+            self.select_nums = sum(data[0])
+            self.matrix_df = pd.DataFrame(np.array(data), index=types, columns=self.sence_columns + self.process_columns)
+        elif selected_columns is not None:
+            self.select_nums = len(selected_columns)
+            self.matrix_df = pd.DataFrame(
+                np.zeros((len(types), expected_columns), dtype=int), index=types, columns=self.sence_columns + self.process_columns
+            )
+            for type in types:
+                for col in selected_columns:
+                    self.matrix_df.loc[type, col] = 1
+        else:
+            self.select_nums = 0
+            self.matrix_df = pd.DataFrame(
+                np.zeros((len(types), expected_columns), dtype=int), index=types, columns=self.sence_columns + self.process_columns
+            )
 
     def __getitem__(self, type_key: str) -> list[str]:
         """
@@ -64,8 +95,19 @@ class SelectMatrix:
 
             # 退出条件
             if user_input == "-1":
-                print("退出编辑。")
-                break
+                # 检查每个 type 是否选中了 select_nums 个列
+                all_valid = True
+                for type in self.types:
+                    if self.matrix_df.loc[type].sum() != self.select_nums:
+                        print(f"❌ Type '{type}' 的选中列数不为 {self.select_nums}，无法退出编辑。")
+                        all_valid = False
+                        continue
+
+                if all_valid:
+                    print("退出编辑。")
+                    break
+
+                continue
 
             parts = user_input.split()
             if len(parts) != 3:
