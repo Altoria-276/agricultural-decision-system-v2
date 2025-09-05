@@ -31,7 +31,7 @@ def main():
     df = data_filter(df, sence_columns, init_data, config.get("filter_threshold"))  # 筛选相似数据
 
     # 数量检测，删去数据量少于 3 的 type
-    type_counts = df["Type"].value_counts()
+    type_counts = df[type_columns[0]].value_counts()
     print("各 Type 的数据量：")
     for t, cnt in type_counts.items():
         print(f"  - {t}: {cnt} 条")
@@ -40,9 +40,9 @@ def main():
         print("以下 Type 数据不足 3 条，将被删除：", invalid_types)
     else:
         print("所有 Type 均满足数据量要求")
-    df = df.groupby("Type").filter(lambda x: len(x) >= 3)
+    df = df.groupby(type_columns[0]).filter(lambda x: len(x) >= 3)
     # 更新 types 列表
-    types = sorted(df["Type"].unique().tolist())
+    types = sorted(df[type_columns[0]].unique().tolist())
     print("过滤后的有效 Type:", types)
 
     type_models = {}
@@ -133,11 +133,11 @@ def main():
         modified = selectMatrix.interactive_edit()
 
     # 选择最优模型
-    best_type = get_best_type(best_models, types, init_data, df)
+    best_type = get_best_type(best_models, types, type_columns, init_data, df)
     print(f"最优的类型是: {best_type}")
 
     # 搜索最优参数
-    df_best_type = df[df["Type"] == best_type].copy()  # 筛选最优类型数据
+    df_best_type = df[df[type_columns[0]] == best_type].copy()  # 筛选最优类型数据
     best_params_and_results = search_parameters(
         best_models[best_type], init_data, df_best_type, config, config.get("search_params_threshold"), config.get("search_params_num_iter")
     )

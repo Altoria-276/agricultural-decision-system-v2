@@ -1,5 +1,11 @@
 init_data: [5, 14.98, 1.3320399999999983, 7.77542, 19.02706897]
-filter_threshold: 0.6
+filter_threshold: 0.2
+datasets:
+  path: "data/决策算法测试数据v2.xlsx"
+  sence_columns: ["条件1", "条件2", "条件3", "条件4", "条件5"]
+  process_columns: ["操作1", "操作2", "操作3"]
+  type_columns: ["技术类型"]
+  result_columns: ["结果"]
 
 search_params_threshold: 10
 search_params_num_iter: 4
