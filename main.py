@@ -132,16 +132,20 @@ def main():
         pre_select = True
         modified = selectMatrix.interactive_edit()
 
+    # v2 UPDATE
+    # 最优模型选择被注释，对每个类型均进行最优参数搜索
+
     # 选择最优模型
-    best_type = get_best_type(best_models, types, type_columns, init_data, df)
-    print(f"最优的类型是: {best_type}")
+    # best_type = get_best_type(best_models, types, type_columns, init_data, df)
+    # print(f"最优的类型是: {best_type}")
 
     # 搜索最优参数
-    df_best_type = df[df[type_columns[0]] == best_type].copy()  # 筛选最优类型数据
-    best_params_and_results = search_parameters(
-        best_models[best_type], init_data, df_best_type, config, config.get("search_params_threshold"), config.get("search_params_num_iter")
-    )
-    print(f"最优的参数组合及结果是:\n {best_params_and_results.to_string(index=False)}")
+    for type in types:
+        df_best_type = df[df[type_columns[0]] == type].copy()  # 筛选最优类型数据
+        best_params_and_results = search_parameters(
+            best_models[type], init_data, df_best_type, config, config.get("search_params_threshold"), config.get("search_params_num_iter")
+        )
+        print(f"类型 {type} 的最优参数组合及结果是:\n {best_params_and_results.to_string(index=False)}")
 
 
 if __name__ == "__main__":
