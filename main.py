@@ -139,11 +139,36 @@ def main():
     # best_type = get_best_type(best_models, types, type_columns, init_data, df)
     # print(f"最优的类型是: {best_type}")
 
+    # 获取用户输入 Y
+    while True:
+        try:
+            target_y_str = input("请输入目标值 Y: ")
+            target_y = float(target_y_str)
+            break
+        except ValueError:
+            print("无效输入，请输入一个数字。")
+
     # 搜索最优参数
     for type in types:
         df_best_type = df[df[type_columns[0]] == type].copy()  # 筛选最优类型数据
+        
+        # 从配置文件中获取 search_parameters 相关参数
+        search_config = config.get("search_parameters", {})
+        threshold = search_config.get("threshold", 10)
+        multiplier = search_config.get("multiplier", 0.95)
+        num_iter = search_config.get("num_iter", 4)
+        num_candidates_per_round = search_config.get("num_candidates_per_round", 5)
+        
         best_params_and_results = search_parameters(
-            best_models[type], init_data, df_best_type, config, config.get("search_params_threshold"), config.get("search_params_num_iter")
+            regression_model=best_models[type], 
+            input_data=init_data, 
+            filtered_dataset=df_best_type, 
+            config=config, 
+            target_y=target_y,
+            threshold=threshold,
+            multiplier=multiplier,
+            num_iter=num_iter,
+            num_candidates_per_round=num_candidates_per_round
         )
         print(f"类型 {type} 的最优参数组合及结果是:\n {best_params_and_results.to_string(index=False)}")
 

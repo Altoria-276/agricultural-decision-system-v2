@@ -7,8 +7,12 @@ datasets:
   type_columns: ["技术类型"]
   result_columns: ["结果"]
 
-search_params_threshold: 10
-search_params_num_iter: 4
+# search_parameters 相关超参数
+search_parameters:
+  threshold: 10          # 阈值参数（原 search_params_threshold）
+  num_iter: 4            # 迭代次数（原 search_params_num_iter）
+  multiplier: 0.95       # 目标值乘数
+  num_candidates_per_round: 5               # 每轮选择的最优参数数量
 
 select_variables_threshold: 0.5
 select_variables_max_num: 5
