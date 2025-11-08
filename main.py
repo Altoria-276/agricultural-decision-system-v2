@@ -153,7 +153,7 @@ def main():
         df_best_type = df[df[type_columns[0]] == type].copy()  # 筛选最优类型数据
         
         # 从配置文件中获取 search_parameters 相关参数
-        search_config = config.get("search_parameters", {})
+        search_config = config.get("search_parameters")
         threshold = search_config.get("threshold", 10)
         multiplier = search_config.get("multiplier", 0.95)
         num_iter = search_config.get("num_iter", 4)
