@@ -171,7 +171,8 @@ def main():
             num_iter=num_iter,
             num_candidates_per_round=num_candidates_per_round,
         )
-        print(f"类型 {type} 的最优参数组合及结果是:\n {best_params_and_results.to_string(index=False)}")
+        search_result="没有符合条件的数据" if best_params_and_results.empty else best_params_and_results.to_string(index=False)
+        print(f"类型 {type} 的最优参数组合及结果是:\n {search_result}")
 
 
 if __name__ == "__main__":
