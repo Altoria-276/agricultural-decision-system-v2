@@ -28,7 +28,9 @@ def main():
     init_data = config.get("init_data")  # 用户输入数据
     df = pd.read_excel(filepath)
 
-    df = data_filter(df, sence_columns, init_data, config.get("filter_threshold"))  # 筛选相似数据
+    df = data_filter(
+        df, sence_columns, init_data, config.get("filter_threshold")
+    )  # 筛选相似数据
 
     # 数量检测，删去数据量少于 3 的 type
     type_counts = df[type_columns[0]].value_counts()
@@ -114,7 +116,6 @@ def main():
                 )
 
             selected_colums = selectMatrix[type]
-
             regression_model = RegressionModel(
                 type_models[type],
                 df_type,
@@ -151,7 +152,7 @@ def main():
     # 搜索最优参数
     for type in types:
         df_best_type = df[df[type_columns[0]] == type].copy()  # 筛选最优类型数据
-        
+
         # 从配置文件中获取 search_parameters 相关参数
         search_config = config.get("search_parameters")
         threshold = search_config.get("threshold", 10)
@@ -159,18 +160,25 @@ def main():
         num_iter = search_config.get("num_iter", 4)
         num_candidates_per_round = search_config.get("num_candidates_per_round", 5)
         
+        print("\nbest_models[type].feature:")
+        print(best_models[type].feature)
+        print("\nselect_matrix[type]: ")
+        print(selectMatrix[type])
+
         best_params_and_results = search_parameters(
-            regression_model=best_models[type], 
-            input_data=init_data, 
-            filtered_dataset=df_best_type, 
-            config=config, 
+            regression_model=best_models[type],
+            input_data=init_data,
+            filtered_dataset=df_best_type,
+            config=config,
             target_y=target_y,
             threshold=threshold,
             multiplier=multiplier,
             num_iter=num_iter,
-            num_candidates_per_round=num_candidates_per_round
+            num_candidates_per_round=num_candidates_per_round,
         )
-        print(f"类型 {type} 的最优参数组合及结果是:\n {best_params_and_results.to_string(index=False)}")
+        print(
+            f"类型 {type} 的最优参数组合及结果是:\n {best_params_and_results.to_string(index=False)}"
+        )
 
 
 if __name__ == "__main__":
