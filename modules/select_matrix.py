@@ -11,6 +11,7 @@ class SelectMatrix:
         types: list[str],
         selected_columns: list[str] = None,
         data: list[list[int]] = None,
+        select_nums: int = 0,
     ):
         """
         初始化选择矩阵。
@@ -48,7 +49,7 @@ class SelectMatrix:
                 for col in selected_columns:
                     self.matrix_df.loc[type, col] = 1
         else:
-            self.select_nums = 0
+            self.select_nums = select_nums
             self.matrix_df = pd.DataFrame(
                 np.zeros((len(types), expected_columns), dtype=int), index=types, columns=self.sence_columns + self.process_columns
             )
@@ -69,6 +70,27 @@ class SelectMatrix:
         # 获取该 type 对应的行，筛选出值为 1 的列
         selected_columns = self.matrix_df.loc[type_key][self.matrix_df.loc[type_key] == 1].index.tolist()
         return selected_columns
+
+    def __setitem__(self, type_key: str, selected_columns: list[str]):
+        """
+        重载 [] 操作符，使得 selectMatrix[type] = selected_columns 可以设置该 type 对应的选中列。
+
+        参数:
+            type_key (str): 某个 type 名称，如 "type1"
+            selected_columns (list[str]): 该 type 要选中的列名列表
+        """
+        if type_key not in self.types:
+            raise KeyError(f"Type '{type_key}' 不存在于 types 列表中。可用 types: {self.types}")
+
+        # 先将该 type 的所有列设为 0
+        self.matrix_df.loc[type_key] = 0
+
+        # 设置选中的列为 1
+        for col in selected_columns:
+            if col in self.matrix_df.columns:
+                self.matrix_df.loc[type_key, col] = 1
+            else:
+                print(f"警告：列名 '{col}' 不存在于矩阵中，无法设置为选中。")
 
     def interactive_edit(self) -> bool:
         """
