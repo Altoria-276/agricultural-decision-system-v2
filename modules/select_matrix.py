@@ -3,7 +3,6 @@ import numpy as np
 
 
 class SelectMatrix:
-
     def __init__(
         self,
         sence_columns: list[str],
@@ -35,24 +34,18 @@ class SelectMatrix:
                 raise ValueError(f"data 的行数 ({len(data)}) 与 types 的数量 ({len(types)}) 不匹配")
             for row in data:
                 if len(row) != expected_columns:
-                    raise ValueError(
-                        f"data 的每一行应有 {expected_columns} 列（{len(sence_columns) + len(process_columns)} 列），但发现为 {len(row)} 列"
-                    )
+                    raise ValueError(f"data 的每一行应有 {expected_columns} 列（{len(sence_columns) + len(process_columns)} 列），但发现为 {len(row)} 列")
             self.select_nums = sum(data[0])
             self.matrix_df = pd.DataFrame(np.array(data), index=types, columns=self.sence_columns + self.process_columns)
         elif selected_columns is not None:
             self.select_nums = len(selected_columns)
-            self.matrix_df = pd.DataFrame(
-                np.zeros((len(types), expected_columns), dtype=int), index=types, columns=self.sence_columns + self.process_columns
-            )
+            self.matrix_df = pd.DataFrame(np.zeros((len(types), expected_columns), dtype=int), index=types, columns=self.sence_columns + self.process_columns)
             for type in types:
                 for col in selected_columns:
                     self.matrix_df.loc[type, col] = 1
         else:
             self.select_nums = select_nums
-            self.matrix_df = pd.DataFrame(
-                np.zeros((len(types), expected_columns), dtype=int), index=types, columns=self.sence_columns + self.process_columns
-            )
+            self.matrix_df = pd.DataFrame(np.zeros((len(types), expected_columns), dtype=int), index=types, columns=self.sence_columns + self.process_columns)
 
     def __getitem__(self, type_key: str) -> list[str]:
         """
@@ -107,7 +100,9 @@ class SelectMatrix:
         while True:
             # 打印当前矩阵
             print("\n当前选择矩阵：")
-            print(self.matrix_df)
+            pd.set_option("display.max_colwidth", None)  # 列宽无上限
+            pd.set_option("display.width", None)  # 总宽无上限
+            print(self.matrix_df.to_string().replace(" ", "\u3000"))
             print("\n当前 Type 列表:", self.types)
             print("当前所有列:", self.matrix_df.columns.tolist())
             print("\n请输入修改指令，格式如：A 0 0 （将 Type A 的第 0 列设置为 0）")

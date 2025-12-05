@@ -1,10 +1,15 @@
+import re
+from matplotlib.pylab import f
+from shap import Explanation
 from configs import Config
 import pandas as pd
 import numpy as np
 
+from sklearn.preprocessing import StandardScaler
 from modules.data_filter import data_filter
 from modules.regression import find_best_model, RegressionModel, plot_multi_types
 from modules.select_matrix import SelectMatrix
+from modules.get_best_type import get_best_type
 from modules.search_parameters import search_parameters
 from modules.indicator_analysis import select_variables
 
@@ -21,8 +26,6 @@ def main():
     type_columns = config.get("datasets.type_columns")
     result_columns = config.get("datasets.result_columns")
     init_data = config.get("init_data")  # 用户输入数据
-    target_number = config.get("target_number")  # 目标数量
-
     df = pd.read_excel(filepath)
 
     df = data_filter(df, sence_columns, init_data, config.get("filter_threshold"))  # 筛选相似数据
@@ -68,65 +71,67 @@ def main():
         select_nums=config.get("select_variables_max_num"),
     )
 
-    for type in types:
-        if not pre_select:
-            df_type = df[df[type_columns[0]] == type]
+    while modified:
+        for type in types:
+            if not pre_select:
+                df_type = df[df[type_columns[0]] == type]
 
-            results, model_select, models = find_best_model(
+                results, model_select, models = find_best_model(
+                    df_type,
+                    sence_columns + process_columns,
+                    result_columns,
+                    config.get("train.test_size"),
+                    config.get("train.random_state"),
+                )
+
+                type_models[type] = model_select
+
+                print(f"类型: {type}")
+                print(results)
+                print(f"最好的模型是: {model_select}")
+
+                # STEP 3
+                # TODO
+
+                corr = models[model_select].correlation_matrix()
+                shap_values = models[model_select].shap_importance().values
+
+                importances = np.abs(shap_values).mean(0)
+                indices = np.argsort(importances)[::-1]
+
+                sorted_columns = [(sence_columns + process_columns)[i] for i in indices]
+                sorted_importances = [importances[i] for i in indices]
+
+                all_feat = sence_columns + process_columns
+                sp_types = ["S" if c in sence_columns else "P" for c in all_feat]
+                selected_corr_matrix, selected_feature_names = select_variables(
+                    correlation_matrix=corr,
+                    shapley_values=shap_values,
+                    types=sp_types,
+                    variable_names=all_feat,
+                    m=config.get("select_variables_max_num"),  #
+                    threshold_t=config.get("select_variables_threshold"),
+                )
+
+                selectMatrix[type] = selected_feature_names
+
+            selected_colums = selectMatrix[type]
+            regression_model = RegressionModel(
+                type_models[type],
                 df_type,
-                sence_columns + process_columns,
+                selected_colums,
                 result_columns,
                 config.get("train.test_size"),
                 config.get("train.random_state"),
             )
 
-            type_models[type] = model_select
+            type_results[type] = regression_model.train_and_evaluate_model()
+            best_models[type] = regression_model  # 保存各类别最优模型
+            regression_model.plot_shap_importance()
 
-            print(f"类型: {type}")
-            print(results)
-            print(f"最好的模型是: {model_select}")
-
-            # STEP 3
-            # TODO
-
-            corr = models[model_select].correlation_matrix()
-            shap_values = models[model_select].shap_importance().values
-
-            importances = np.abs(shap_values).mean(0)
-            indices = np.argsort(importances)[::-1]
-
-            sorted_columns = [(sence_columns + process_columns)[i] for i in indices]
-            sorted_importances = [importances[i] for i in indices]
-
-            all_feat = sence_columns + process_columns
-            sp_types = ["S" if c in sence_columns else "P" for c in all_feat]
-            selected_corr_matrix, selected_feature_names = select_variables(
-                correlation_matrix=corr,
-                shapley_values=shap_values,
-                types=sp_types,
-                variable_names=all_feat,
-                m=config.get("select_variables_max_num"),  #
-                threshold_t=config.get("select_variables_threshold"),
-            )
-
-            selectMatrix[type] = selected_feature_names
-
-        selected_colums = selectMatrix[type]
-        regression_model = RegressionModel(
-            type_models[type],
-            df_type,
-            selected_colums,
-            result_columns,
-            config.get("train.test_size"),
-            config.get("train.random_state"),
-        )
-
-        type_results[type] = regression_model.train_and_evaluate_model()
-        best_models[type] = regression_model  # 保存各类别最优模型
-        regression_model.plot_shap_importance()
-
-    plot_multi_types(type_results)
-    pre_select = True
+        plot_multi_types(type_results)
+        pre_select = True
+        modified = selectMatrix.interactive_edit()
 
     # v2 UPDATE
     # 最优模型选择被注释，对每个类型均进行最优参数搜索
@@ -136,8 +141,15 @@ def main():
     # print(f"最优的类型是: {best_type}")
 
     # 获取用户输入 Y
-    target_y = float(target_number)
+    while True:
+        try:
+            target_y_str = input("请输入目标值 Y: ")
+            target_y = float(target_y_str)
+            break
+        except ValueError:
+            print("无效输入，请输入一个数字。")
 
+    # 搜索最优参数
     for type in types:
         df_best_type = df[df[type_columns[0]] == type].copy()  # 筛选最优类型数据
 

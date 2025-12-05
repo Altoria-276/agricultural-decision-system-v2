@@ -1,5 +1,6 @@
 init_data: [0.5, 0.5, 0.5, 0.5, 0.5]
 filter_threshold: 0.6
+target_number: 0.5
 datasets:
   path: "data/决策算法测试数据.xlsx"
   sence_columns: ["Cdtotal", "CECsoil", "ECsoil", "pHsoil", "SOM"]

@@ -1,18 +1,9 @@
-init_data: [5, 14.98, 1.3320399999999983, 7.77542, 19.02706897]
+init_data: [1501, 2,14,  26,  0.6136,  2,  3]
 filter_threshold: -1
+target_number: 50
 datasets:
-  path: "data/test.xlsx"
-  sence_columns: ["条件1", "条件2", "条件3", "条件4", "条件5"]
-  process_columns: ["操作1", "操作2", "操作3"]
-  type_columns: ["技术类型"]
-  result_columns: ["结果"]
-
-# search_parameters 相关超参数
-search_parameters:
-  threshold: 10 # 阈值参数（原 search_params_threshold）
-  num_iter: 4 # 迭代次数（原 search_params_num_iter）
-  multiplier: 0.95 # 目标值乘数
-  num_candidates_per_round: 5 # 每轮选择的最优参数数量
-
-select_variables_threshold: 0.5
-select_variables_max_num: 5
+  path: "data/new.xlsx"
+  sence_columns: ["降雨量/mm", "坡度/°", "土壤氮含量（g/kg）", "氮肥利用效率%", "NDVI(植被覆盖)", "植被类型", "土地利用类型"]
+  process_columns: ["用量（株/平方米）", "氮肥施肥量（kg/亩)", "磷肥施肥量（kg/亩)"]
+  type_columns: ["技术分类"]
+  result_columns: ["入水口水中氮含量降低程度（%）"]
