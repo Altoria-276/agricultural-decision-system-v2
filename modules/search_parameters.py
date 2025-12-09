@@ -114,7 +114,7 @@ def search_parameters(
     # mask = current_predictions < target_y
     output_filtered = current_dataset.loc[mask, target_cols].copy()
 
-    pred_col_name = getattr(regression_model,"target","prediction")
+    pred_col_name = regression_model.target[0]
     output_filtered[pred_col_name] = current_predictions[mask]
 
     return output_filtered.reset_index(drop=True)
