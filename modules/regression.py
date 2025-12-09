@@ -1,9 +1,6 @@
-from matplotlib.axes import Axes
-from matplotlib.figure import Figure
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from pyparsing import Dict
 import shap
 from sklearn.discriminant_analysis import StandardScaler
 from sklearn.ensemble import RandomForestRegressor
@@ -12,17 +9,11 @@ from sklearn.metrics import (
     mean_absolute_error,
     r2_score,
     root_mean_squared_error,
-    confusion_matrix,
-    precision_score,
-    recall_score,
-    f1_score,
 )
 from sklearn.linear_model import Lasso, LinearRegression, Ridge
-from matplotlib import rcParams
 import matplotlib
 import seaborn as sns
 import os
-from scipy.optimize import curve_fit, fsolve
 
 from sklearn.svm import SVR
 from sklearn.tree import DecisionTreeRegressor
@@ -197,6 +188,9 @@ class RegressionModel:
             explainer = shap.Explainer(self.model.predict, X_scaled)
             self.shap_values = explainer(X_scaled)
 
+        abs_values = np.abs(self.shap_values.values)  # 核心：绝对值
+        self.shap_values = shap.Explanation(values=abs_values, base_values=self.shap_values.base_values, data=self.shap_values.data, feature_names=self.shap_values.feature_names)
+
         return self.shap_values
 
     def plot_shap_importance(self):
@@ -281,9 +275,7 @@ def find_best_model(
     for model_name in models_list:
         try:
             # 创建模型实例
-            reg_model = RegressionModel(
-                model=model_name, data=data, feature=feature, target=target, test_size=test_size, random_state=random_state
-            )
+            reg_model = RegressionModel(model=model_name, data=data, feature=feature, target=target, test_size=test_size, random_state=random_state)
 
             # 训练并评估模型
             eval_result = reg_model.train_and_evaluate_model()

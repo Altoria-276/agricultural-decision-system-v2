@@ -16,14 +16,17 @@ warnings.filterwarnings("ignore")
 def main():
     config = Config()
     filepath = config.get("datasets.path")
+    input_path = config.get("datasets.input_path")
     sence_columns = config.get("datasets.sence_columns")
     process_columns = config.get("datasets.process_columns")
     type_columns = config.get("datasets.type_columns")
     result_columns = config.get("datasets.result_columns")
     init_data = config.get("init_data")  # 用户输入数据
-    target_number = config.get("target_number")  # 目标数量
 
+    # 读取输入数据
     df = pd.read_excel(filepath)
+    # 读取用户输入的xlsx文件
+    input_df = pd.read_excel(input_path)
 
     df = data_filter(df, sence_columns, init_data, config.get("filter_threshold"))  # 筛选相似数据
 
@@ -86,9 +89,6 @@ def main():
             print(results)
             print(f"最好的模型是: {model_select}")
 
-            # STEP 3
-            # TODO
-
             corr = models[model_select].correlation_matrix()
             shap_values = models[model_select].shap_importance().values
 
@@ -135,9 +135,6 @@ def main():
     # best_type = get_best_type(best_models, types, type_columns, init_data, df)
     # print(f"最优的类型是: {best_type}")
 
-    # 获取用户输入 Y
-    target_y = float(target_number)
-
     for type in types:
         df_best_type = df[df[type_columns[0]] == type].copy()  # 筛选最优类型数据
 
@@ -147,10 +144,11 @@ def main():
         multiplier = search_config.get("multiplier", 0.95)
         num_iter = search_config.get("num_iter", 4)
         num_candidates_per_round = search_config.get("num_candidates_per_round", 5)
+        target_y = search_config.get("target_number", 0.5)
 
         best_params_and_results = search_parameters(
             regression_model=best_models[type],
-            input_data=init_data,
+            input_data=input_df,
             filtered_dataset=df_best_type,
             config=config,
             target_y=target_y,

@@ -1,0 +1,26 @@
+init_data: [0.5, 0.5, 0.5, 0.5, 0.5] # 初始数据用于计算余弦夹角过滤
+filter_threshold: 0.6  # 与初始数据计算余弦夹角后过滤的阈值
+
+
+datasets:
+  path: "data/决策算法测试数据.xlsx"
+  input_path: "data/决策算法测试数据.xlsx"
+  sence_columns: ["Cdtotal", "CECsoil", "ECsoil", "pHsoil", "SOM"]  # 环境列列名
+  process_columns: ["TPV", "DosageBC", "Time"]  # 处理列列名
+  type_columns: ["Type"]  # 分类列列名
+  result_columns: ["Cdreduction rate"]  # 结果列列名
+train:
+  test_size: 0.25  # 测试集比例
+  random_state: 42  # 随机种子
+
+# 参数搜索相关超参数
+search_parameters:
+  threshold: 10          # 阈值参数
+  num_iter: 4            # 迭代次数
+  multiplier: 0.95       # 目标值乘数
+  num_candidates_per_round: 5               # 每轮选择的最优参数数量
+  target_number: 0.5  # 目标数值
+
+select_variables_threshold: 0.5  # 选择变量阈值
+select_variables_max_num: 5  # 最大选择变量数量
+

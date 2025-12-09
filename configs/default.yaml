@@ -1,22 +1,26 @@
-init_data: [0.5, 0.5, 0.5, 0.5, 0.5]
-filter_threshold: 0.6
-target_number: 0.5
-datasets:
-  path: "data/决策算法测试数据.xlsx"
-  sence_columns: ["Cdtotal", "CECsoil", "ECsoil", "pHsoil", "SOM"]
-  process_columns: ["TPV", "DosageBC", "Time"]
-  type_columns: ["Type"]
-  result_columns: ["Cdreduction rate"]
-train:
-  test_size: 0.2
-  random_state: 42
+init_data: [1501, 2,14,  26,  0.6136,  2,  3] # 初始数据用于计算余弦夹角过滤
+filter_threshold: -1  # 与初始数据计算余弦夹角后过滤的阈值
 
-# search_parameters 相关超参数
+
+datasets:
+  path: "data/new.xlsx"
+  input_path: "data/input.xlsx"
+  sence_columns: ["降雨量/mm", "坡度/°", "土壤氮含量（g/kg）", "氮肥利用效率%", "NDVI(植被覆盖)", "植被类型", "土地利用类型"]
+  process_columns: ["用量（株/平方米）", "氮肥施肥量（kg/亩)", "磷肥施肥量（kg/亩)"]
+  type_columns: ["技术分类"]
+  result_columns: ["治理后入水口水中氮含量（mg/L）"]
+train:
+  test_size: 0.25  # 测试集比例
+  random_state: 42  # 随机种子
+
+# 参数搜索相关超参数
 search_parameters:
-  threshold: 10          # 阈值参数（原 search_params_threshold）
-  num_iter: 4            # 迭代次数（原 search_params_num_iter）
+  threshold: 0          # 阈值参数
+  num_iter: 4            # 迭代次数
   multiplier: 0.95       # 目标值乘数
   num_candidates_per_round: 5               # 每轮选择的最优参数数量
+  target_number: 5  # 目标数值
 
-select_variables_threshold: 0.5
-select_variables_max_num: 5
+select_variables_threshold: 0.5  # 选择变量阈值
+select_variables_max_num: 5  # 最大选择变量数量
+
