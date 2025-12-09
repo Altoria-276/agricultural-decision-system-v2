@@ -85,6 +85,7 @@ def main():
 
             type_models[type] = model_select
 
+            print("=" * 50)
             print(f"类型: {type}")
             print(results)
             print(f"最好的模型是: {model_select}")
@@ -138,6 +139,9 @@ def main():
     for type in types:
         df_best_type = df[df[type_columns[0]] == type].copy()  # 筛选最优类型数据
 
+        # 根据当前处理的 type 过滤输入数据
+        filtered_input_df = input_df[input_df[type_columns[0]] == type].copy()
+
         # 从配置文件中获取 search_parameters 相关参数
         search_config = config.get("search_parameters")
         threshold = search_config.get("threshold", 10)
@@ -148,7 +152,7 @@ def main():
 
         best_params_and_results = search_parameters(
             regression_model=best_models[type],
-            input_data=input_df,
+            input_data=filtered_input_df,
             filtered_dataset=df_best_type,
             config=config,
             target_y=target_y,
@@ -159,6 +163,7 @@ def main():
         )
         search_result = "没有符合条件的数据" if best_params_and_results.empty else best_params_and_results.to_string(index=False)
         print(f"类型 {type} 选用 {regression_model.model} 模型，最优参数组合及结果是:\n {search_result}")
+        print("=" * 50)
 
 
 if __name__ == "__main__":
