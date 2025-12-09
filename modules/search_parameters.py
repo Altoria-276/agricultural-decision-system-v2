@@ -67,22 +67,26 @@ def search_parameters(
 
     # 处理 input_data 为 DataFrame 的情况
     if isinstance(input_data, pd.DataFrame):
-        # 如果是 DataFrame，使用第一行数据并确保顺序与 sence_cols 一致
-        # 首先检查所有 sence_cols 是否都在 input_data 中
-        missing_cols = [col for col in sence_cols if col not in input_data.columns]
-        if missing_cols:
-            print(f"警告：输入数据中缺少以下环境因子列：{missing_cols}")
-            print(f"可用的列：{input_data.columns.tolist()}")
-            # 使用所有存在的环境因子列
-            available_sence_cols = [col for col in sence_cols if col in input_data.columns]
-            input_data = input_data[available_sence_cols].iloc[0].tolist()
-            # 补充缺失的列，使用默认值 0
-            for col in missing_cols:
-                input_data.append(0)
-        else:
-            input_data = input_data[sence_cols].iloc[0].tolist()
-
-    filtered_dataset.loc[:, sence_cols] = input_data
+        if not input_data.empty:
+            # 如果是 DataFrame，使用第一行数据并确保顺序与 sence_cols 一致
+            # 首先检查所有 sence_cols 是否都在 input_data 中
+            missing_cols = [col for col in sence_cols if col not in input_data.columns]
+            if missing_cols:
+                print(f"警告：输入数据中缺少以下环境因子列：{missing_cols}")
+                print(f"可用的列：{input_data.columns.tolist()}")
+                # 使用所有存在的环境因子列
+                available_sence_cols = [col for col in sence_cols if col in input_data.columns]
+                input_data = input_data[available_sence_cols].iloc[0].tolist()
+                # 补充缺失的列，使用默认值 0
+                for col in missing_cols:
+                    input_data.append(0)
+            else:
+                input_data = input_data[sence_cols].iloc[0].tolist()
+            # 只有当 input_data 不为空时才覆盖环境因子列
+            filtered_dataset.loc[:, sence_cols] = input_data
+    else:
+        # 如果是列表，直接覆盖环境因子列
+        filtered_dataset.loc[:, sence_cols] = input_data
 
     # 2. 确定可拓展的列（工艺参数和模型特征的交集）
     target_cols = [col for col in regression_model.feature if col in process_cols]
