@@ -109,6 +109,8 @@ def search_parameters(
     mask = current_predictions > threshold
     # mask = current_predictions < target_y
     output_filtered = current_dataset.loc[mask, target_cols].copy()
-    output_filtered["prediction"] = current_predictions[mask]
+
+    pred_col_name = getattr(regression_model,"target","prediction")
+    output_filtered[pred_col_name] = current_predictions[mask]
 
     return output_filtered.reset_index(drop=True)
