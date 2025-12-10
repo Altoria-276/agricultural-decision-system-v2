@@ -1,3 +1,4 @@
+import shutil
 from configs import Config
 import pandas as pd
 import numpy as np
@@ -10,13 +11,19 @@ from modules.indicator_analysis import select_variables
 
 import warnings
 
+from utils.filepath import get_temp_csv_path, get_temp_path
+
 warnings.filterwarnings("ignore")
 
 
 def main():
+    # 删除 temp 目录下的所有文件和子目录    
+    temp_dir = get_temp_path()
+    for file in temp_dir.iterdir():
+        shutil.rmtree(file)
+
     config = Config()
     filepath = config.get("datasets.path")
-    input_path = config.get("datasets.input_path")
     sence_columns = config.get("datasets.sence_columns")
     process_columns = config.get("datasets.process_columns")
     type_columns = config.get("datasets.type_columns")
@@ -27,8 +34,6 @@ def main():
 
     # 读取输入数据
     df = pd.read_excel(filepath)
-    # 读取用户输入的xlsx文件
-    input_df = pd.read_excel(input_path)
 
     df = data_filter(df, sence_columns, init_data, config.get("filter_threshold"))  # 筛选相似数据
 
@@ -126,7 +131,7 @@ def main():
 
         type_results[type] = regression_model.train_and_evaluate_model()
         best_models[type] = regression_model  # 保存各类别最优模型
-        regression_model.plot_shap_importance()
+        regression_model.plot_shap_importance(f"{type}_shap_importance.png")
 
     plot_multi_types(type_results)
     pre_select = True
@@ -141,9 +146,6 @@ def main():
     for type in types:
         df_best_type = df[df[type_columns[0]] == type].copy()  # 筛选最优类型数据
 
-        # 根据当前处理的 type 过滤输入数据
-        filtered_input_df = input_df[input_df[type_columns[0]] == type].copy()
-
         # 从配置文件中获取 search_parameters 相关参数
         search_config = config.get("search_parameters")
         threshold = search_config.get("threshold", 10)
@@ -154,7 +156,7 @@ def main():
 
         best_params_and_results = search_parameters(
             regression_model=best_models[type],
-            input_data=filtered_input_df,
+            input_data=init_data,
             filtered_dataset=df_best_type,
             config=config,
             target_y=target_y,
@@ -166,6 +168,9 @@ def main():
         search_result = "没有符合条件的结果" if best_params_and_results.empty else best_params_and_results.to_string(index=False)
         print(f"类型 {type} ，最优参数组合及结果是:\n {search_result}")
         print("=" * 50)
+
+        csv_path = get_temp_csv_path() / f"{type}_best_params.csv"
+        best_params_and_results.to_csv(csv_path, index=False)
 
 
 if __name__ == "__main__":

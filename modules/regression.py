@@ -193,9 +193,12 @@ class RegressionModel:
 
         return self.shap_values
 
-    def plot_shap_importance(self):
+    def plot_shap_importance(self,name: str = "shap_importance.png"):
         """
         绘制基于 SHAP 值的特征重要性图。
+
+        Args:
+            name (str, optional): 保存文件的名称。默认 "shap_importance.png"。
         """
         if not self.shap_values:
             X_scaled = self.scaler_x.transform(self.X)
@@ -209,10 +212,10 @@ class RegressionModel:
         ax.set_xlabel("特征重要性")
         ax.set_ylabel("特征")
 
-        img_path = os.path.join(get_temp_image_path(), "shap_importance.png")
+        img_path = os.path.join(get_temp_image_path(), name)
         fig.savefig(img_path)
 
-        plt.show()
+        # plt.show()
 
         plt.close()
         return img_path
@@ -330,7 +333,7 @@ def plot_multi_types(results: dict[str, dict]):
     img_path = os.path.join(get_temp_image_path(), "multi_types_rmse.png")
     fig.savefig(img_path)
 
-    plt.show()
+    # plt.show()
 
     plt.close()
     return img_path
