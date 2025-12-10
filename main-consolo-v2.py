@@ -73,63 +73,65 @@ def main():
         select_nums=config.get("select_variables_max_num"),
     )
 
-    for type in types:
-        if not pre_select:
-            df_type = df[df[type_columns[0]] == type]
+    while modified:
+        for type in types:
+            if not pre_select:
+                df_type = df[df[type_columns[0]] == type]
 
-            results, model_select, models = find_best_model(
+                results, model_select, models = find_best_model(
+                    df_type,
+                    sence_columns + process_columns,
+                    result_columns,
+                    config.get("train.test_size"),
+                    config.get("train.random_state"),
+                )
+
+                type_models[type] = model_select
+
+                print("=" * 50)
+                print(f"类型: {type}")
+                print(results)
+                print(f"最好的模型是: {model_select}")
+
+                corr = models[model_select].correlation_matrix()
+                shap_values = models[model_select].shap_importance().values
+
+                importances = np.abs(shap_values).mean(0)
+                indices = np.argsort(importances)[::-1]
+
+                sorted_columns = [(sence_columns + process_columns)[i] for i in indices]
+                sorted_importances = [importances[i] for i in indices]
+
+                all_feat = sence_columns + process_columns
+                sp_types = ["S" if c in sence_columns else "P" for c in all_feat]
+                selected_corr_matrix, selected_feature_names = select_variables(
+                    correlation_matrix=corr,
+                    shapley_values=shap_values,
+                    types=sp_types,
+                    variable_names=all_feat,
+                    m=config.get("select_variables_max_num"),  #
+                    threshold_t=config.get("select_variables_threshold"),
+                )
+
+                selectMatrix[type] = selected_feature_names
+
+            selected_colums = selectMatrix[type]
+            regression_model = RegressionModel(
+                type_models[type],
                 df_type,
-                sence_columns + process_columns,
+                selected_colums,
                 result_columns,
                 config.get("train.test_size"),
                 config.get("train.random_state"),
             )
 
-            type_models[type] = model_select
+            type_results[type] = regression_model.train_and_evaluate_model()
+            best_models[type] = regression_model  # 保存各类别最优模型
+            regression_model.plot_shap_importance()
 
-            print("=" * 50)
-            print(f"类型: {type}")
-            print(results)
-            print(f"最好的模型是: {model_select}")
-
-            corr = models[model_select].correlation_matrix()
-            shap_values = models[model_select].shap_importance().values
-
-            importances = np.abs(shap_values).mean(0)
-            indices = np.argsort(importances)[::-1]
-
-            sorted_columns = [(sence_columns + process_columns)[i] for i in indices]
-            sorted_importances = [importances[i] for i in indices]
-
-            all_feat = sence_columns + process_columns
-            sp_types = ["S" if c in sence_columns else "P" for c in all_feat]
-            selected_corr_matrix, selected_feature_names = select_variables(
-                correlation_matrix=corr,
-                shapley_values=shap_values,
-                types=sp_types,
-                variable_names=all_feat,
-                m=config.get("select_variables_max_num"),  #
-                threshold_t=config.get("select_variables_threshold"),
-            )
-
-            selectMatrix[type] = selected_feature_names
-
-        selected_colums = selectMatrix[type]
-        regression_model = RegressionModel(
-            type_models[type],
-            df_type,
-            selected_colums,
-            result_columns,
-            config.get("train.test_size"),
-            config.get("train.random_state"),
-        )
-
-        type_results[type] = regression_model.train_and_evaluate_model()
-        best_models[type] = regression_model  # 保存各类别最优模型
-        regression_model.plot_shap_importance()
-
-    plot_multi_types(type_results)
-    pre_select = True
+        plot_multi_types(type_results)
+        pre_select = True
+        modified = selectMatrix.interactive_edit()
 
     # v2 UPDATE
     # 最优模型选择被注释，对每个类型均进行最优参数搜索
