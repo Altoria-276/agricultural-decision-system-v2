@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import os
 
 
 class SelectMatrix:
@@ -169,3 +170,161 @@ class SelectMatrix:
                 modified = True
 
         return modified
+
+    def load_or_create_matrix_csv(self, file_path: str = "data/select_matrix.csv") -> bool:
+        """
+        检测是否存在选择矩阵文件，如果不存在则创建；如果存在则读取并验证合法性。
+        使用CSV文件来存储选择矩阵，替代interactive_edit中的内存修改方式。
+
+        参数:
+            file_path (str, 可选): 选择矩阵CSV文件的路径，默认为"data/select_matrix.csv"
+
+        返回:
+            bool: 是否成功加载或创建矩阵
+        """
+        # 确保文件路径是绝对路径
+        if not os.path.isabs(file_path):
+            # 获取当前脚本所在目录的父目录（项目根目录）
+            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            file_path = os.path.join(project_root, file_path)
+
+        # 确保数据目录存在
+        data_dir = os.path.dirname(file_path)
+        if not os.path.exists(data_dir):
+            os.makedirs(data_dir)
+
+        # 检查文件是否存在
+        if not os.path.exists(file_path):
+            # 文件不存在，创建新的CSV文件
+            print(f"选择矩阵文件 {file_path} 不存在，正在创建...")
+            self.matrix_df.to_csv(file_path, index=True, encoding="utf-8")
+            print(f"✅ 已创建选择矩阵文件: {file_path}")
+            return True
+        else:
+            # 文件存在，尝试读取
+            print(f"正在读取选择矩阵文件: {file_path}")
+            try:
+                # 读取CSV文件
+                df = pd.read_csv(file_path, index_col=0, encoding="utf-8")
+
+                # 验证文件合法性
+                if self._validate_matrix_csv(df):
+                    # 验证通过，更新矩阵
+                    self.matrix_df = df.astype(int)
+                    print("✅ 选择矩阵文件验证通过并加载成功")
+                    return True
+                else:
+                    print("❌ 选择矩阵文件验证失败")
+                    return False
+            except Exception as e:
+                print(f"❌ 读取选择矩阵文件时发生错误: {str(e)}")
+                return False
+
+    def _validate_matrix_csv(self, df: pd.DataFrame) -> bool:
+        """
+        验证选择矩阵CSV文件的合法性
+
+        参数:
+            df (pd.DataFrame): 从CSV文件读取的DataFrame
+
+        返回:
+            bool: 矩阵是否合法
+        """
+        # 1. 检查索引（types）是否匹配
+        if not set(df.index.tolist()) == set(self.types):
+            print(f"❌ 选择矩阵的类型列表不匹配！")
+            print(f"   预期类型: {sorted(self.types)}")
+            print(f"   实际类型: {sorted(df.index.tolist())}")
+            return False
+
+        # 2. 检查列名是否匹配
+        if not set(df.columns.tolist()) == set(self.sence_columns + self.process_columns):
+            print(f"❌ 选择矩阵的列名不匹配！")
+            print(f"   预期列名: {sorted(self.sence_columns + self.process_columns)}")
+            print(f"   实际列名: {sorted(df.columns.tolist())}")
+            return False
+
+        # 3. 检查每个元素是否为0或1
+        for type_name in df.index:
+            for col_name in df.columns:
+                value = df.loc[type_name, col_name]
+                if value not in [0, 1]:
+                    print(f"❌ 选择矩阵中的值必须为0或1！")
+                    print(f"   错误位置: Type '{type_name}', 列 '{col_name}', 值 '{value}'")
+                    return False
+
+        # 4. 检查每个type是否选中了select_nums个列（参考interactive_edit中的验证）
+        all_valid = True
+        for type_name in df.index:
+            if df.loc[type_name].sum() != self.select_nums:
+                print(f"❌ Type '{type_name}' 的选中列数不为 {self.select_nums}！")
+                print(f"   当前选中列数: {df.loc[type_name].sum()}")
+                all_valid = False
+
+        return all_valid
+
+    def save_matrix_csv(self, file_path: str = "data/select_matrix.csv") -> bool:
+        """
+        将选择矩阵保存到CSV文件
+
+        参数:
+            file_path (str, 可选): 选择矩阵CSV文件的路径，默认为"data/select_matrix.csv"
+
+        返回:
+            bool: 是否成功保存
+        """
+        # 确保文件路径是绝对路径
+        if not os.path.isabs(file_path):
+            # 获取当前脚本所在目录的父目录（项目根目录）
+            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            file_path = os.path.join(project_root, file_path)
+
+        # 确保数据目录存在
+        data_dir = os.path.dirname(file_path)
+        if not os.path.exists(data_dir):
+            os.makedirs(data_dir)
+
+        try:
+            self.matrix_df.to_csv(file_path, index=True, encoding="utf-8")
+            print(f"✅ 选择矩阵已保存到: {file_path}")
+            return True
+        except Exception as e:
+            print(f"❌ 保存选择矩阵文件时发生错误: {str(e)}")
+            return False
+
+    def update_matrix_from_csv(self, file_path: str = "data/select_matrix.csv") -> bool:
+        """
+        从CSV文件更新选择矩阵，用于覆盖interactive_edit中的内存修改方式
+
+        参数:
+            file_path (str, 可选): 选择矩阵CSV文件的路径，默认为"data/select_matrix.csv"
+
+        返回:
+            bool: 是否成功更新
+        """
+        # 确保文件路径是绝对路径
+        if not os.path.isabs(file_path):
+            # 获取当前脚本所在目录的父目录（项目根目录）
+            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            file_path = os.path.join(project_root, file_path)
+
+        if not os.path.exists(file_path):
+            print(f"❌ 选择矩阵文件不存在: {file_path}")
+            return False
+
+        try:
+            # 读取CSV文件
+            df = pd.read_csv(file_path, index_col=0, encoding="utf-8")
+
+            # 验证文件合法性
+            if self._validate_matrix_csv(df):
+                # 验证通过，更新矩阵
+                self.matrix_df = df.astype(int)
+                print("✅ 从CSV文件更新选择矩阵成功")
+                return True
+            else:
+                print("❌ 更新选择矩阵失败：CSV文件验证失败")
+                return False
+        except Exception as e:
+            print(f"❌ 更新选择矩阵失败：{str(e)}")
+            return False
