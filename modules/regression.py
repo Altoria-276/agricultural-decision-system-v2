@@ -1,3 +1,4 @@
+from pathlib import Path
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -19,8 +20,6 @@ from sklearn.svm import SVR
 from sklearn.tree import DecisionTreeRegressor
 
 from xgboost import XGBRegressor
-
-from utils.filepath import get_temp_image_path
 
 
 matplotlib.rcParams["font.sans-serif"] = ["SimHei"]
@@ -193,32 +192,54 @@ class RegressionModel:
 
         return self.shap_values
 
-    def plot_shap_importance(self,name: str = "shap_importance.png"):
+    def plot_shap_importance(self, name: str, path: Path):
         """
         绘制基于 SHAP 值的特征重要性图。
 
         Args:
-            name (str, optional): 保存文件的名称。默认 "shap_importance.png"。
+            name (str): 保存文件的名称。
+            path (Path): 保存图片的路径。
         """
         if not self.shap_values:
             X_scaled = self.scaler_x.transform(self.X)
             explainer = shap.Explainer(self.model.predict, X_scaled)
             self.shap_values = explainer(X_scaled)
 
-        fig, ax = plt.subplots(figsize=(12, 10))
+        # 设置字体大小和边距
+        plt.rcParams.update(
+            {
+                "font.size": 12,
+                "axes.titlesize": 14,
+                "axes.labelsize": 12,
+                "figure.subplot.left": 0.2,  # 增加左边距
+                "figure.subplot.right": 0.95,
+                "figure.subplot.bottom": 0.15,
+                "figure.subplot.top": 0.9,
+            }
+        )
 
+        # 让shap.summary_plot创建自己的图形
         shap.summary_plot(self.shap_values, X_scaled, plot_type="bar", show=False)
+
+        # 获取当前图形和轴
+        fig = plt.gcf()
+        ax = plt.gca()
+
+        # 设置标题和标签
         ax.set_title("基于 SHAP 的特征重要性分析")
         ax.set_xlabel("特征重要性")
         ax.set_ylabel("特征")
 
-        img_path = os.path.join(get_temp_image_path(), name)
-        fig.savefig(img_path)
+        # 调整图形边距，确保中文显示完整
+        plt.tight_layout()
+
+        # 保存图片
+        fig.savefig(path / name, bbox_inches="tight")
 
         # plt.show()
 
         plt.close()
-        return img_path
+        return path / name
 
     def correlation_matrix(self) -> pd.DataFrame:
         """
@@ -235,7 +256,7 @@ class RegressionModel:
 
         return self.corr_matrix
 
-    def plot_correlation_matrix(self) -> str:
+    def plot_correlation_matrix(self, path: Path) -> str:
         """
         绘制相关性矩阵热力图
 
@@ -249,7 +270,7 @@ class RegressionModel:
         ax.set_xlabel("特征")
         ax.set_ylabel("特征")
 
-        img_path = os.path.join(get_temp_image_path(), "correlation_matrix.png")
+        img_path = path / "correlation_matrix.png"
         fig.savefig(img_path)
         plt.show()
         plt.close()
@@ -311,10 +332,16 @@ def find_best_model(
     return results_df, best_model, models
 
 
-def plot_multi_types(results: dict[str, dict]):
+def plot_multi_types(results: dict[str, dict], path: Path):
     """
     绘制多个类型的 RMSE 对比图。
 
+    Args:
+        results (dict[str, dict]): 包含多个类型模型评估结果的字典，每个类型包含 "rmse" 指标。
+        path (Path): 保存图片的路径。
+
+    Returns:
+        Path: 保存的图片路径
     """
     fig, ax = plt.subplots(figsize=(12, 10))
     x = []
@@ -330,7 +357,9 @@ def plot_multi_types(results: dict[str, dict]):
     ax.set_xlabel("类型")
     ax.set_ylabel("RMSE")
     ax.legend()
-    img_path = os.path.join(get_temp_image_path(), "multi_types_rmse.png")
+
+    img_path = path / "multi_types_rmse.png"
+
     fig.savefig(img_path)
 
     # plt.show()

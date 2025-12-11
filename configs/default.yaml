@@ -23,3 +23,8 @@ search_parameters:
 select_variables_threshold: 0.5  # 选择变量阈值
 select_variables_max_num: 5  # 最大选择变量数量
 
+output:
+  select_csv_path: "temp/select/"
+  rmse_img_path: "temp/rmse/"
+  shap_img_path: "temp/shap/"
+  result_csv_path: "temp/result/"

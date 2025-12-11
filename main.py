@@ -1,3 +1,4 @@
+from pathlib import Path
 import shutil
 from configs import Config
 import pandas as pd
@@ -11,14 +12,14 @@ from modules.indicator_analysis import select_variables
 
 import warnings
 
-from utils.filepath import get_temp_csv_path, get_temp_path
+from utils.filepath import get_temp_path
 
 warnings.filterwarnings("ignore")
 
 
 def main():
-    # 删除 temp 目录下的所有文件和子目录    
-    temp_dir = get_temp_path()
+    # 删除 temp 目录下的所有文件和子目录
+    temp_dir = get_temp_path("temp/")
     for file in temp_dir.iterdir():
         shutil.rmtree(file)
 
@@ -29,6 +30,11 @@ def main():
     type_columns = config.get("datasets.type_columns")
     result_columns = config.get("datasets.result_columns")
     init_data = config.get("init_data")  # 用户输入数据
+
+    select_path: Path = get_temp_path(config.get("output.select_csv_path"))
+    rmse_path: Path = get_temp_path(config.get("output.rmse_img_path"))
+    shap_path: Path = get_temp_path(config.get("output.shap_img_path"))
+    result_path: Path = get_temp_path(config.get("output.result_csv_path"))
 
     num_k = 5
 
@@ -131,9 +137,9 @@ def main():
 
         type_results[type] = regression_model.train_and_evaluate_model()
         best_models[type] = regression_model  # 保存各类别最优模型
-        regression_model.plot_shap_importance(f"{type}_shap_importance.png")
+        regression_model.plot_shap_importance(f"{type}_shap_importance.png", shap_path)
 
-    plot_multi_types(type_results)
+    plot_multi_types(type_results, rmse_path)
     pre_select = True
 
     # v2 UPDATE
@@ -142,6 +148,18 @@ def main():
     # 选择最优模型
     # best_type = get_best_type(best_models, types, type_columns, init_data, df)
     # print(f"最优的类型是: {best_type}")
+
+    # 保存每个type选择的列名到CSV文件
+    select_columns_path: Path = get_temp_path(select_path) / "select_columns.csv"
+
+    # 创建一个DataFrame来存储每个type选择的列名
+    select_columns_data = {}
+    for type in types:
+        selected_cols = selectMatrix[type]
+        select_columns_data[type] = selected_cols
+
+    select_columns_df = pd.DataFrame.from_dict(select_columns_data, orient="index")
+    select_columns_df.to_csv(select_columns_path, index=True, encoding="utf-8")
 
     for type in types:
         df_best_type = df[df[type_columns[0]] == type].copy()  # 筛选最优类型数据
@@ -169,7 +187,7 @@ def main():
         print(f"类型 {type} ，最优参数组合及结果是:\n {search_result}")
         print("=" * 50)
 
-        csv_path = get_temp_csv_path() / f"{type}_best_params.csv"
+        csv_path = result_path / f"{type}_best_params.csv"
         best_params_and_results.to_csv(csv_path, index=False)
 
 
