@@ -5,29 +5,19 @@ from modules.regression import RegressionModel
 from itertools import product
 
 
-def expand_dataset(dataset, target_cols, scales=[0.05, 0.5, 0.95]):
-    expanded_rows = []
 
-    for _, row in dataset.iterrows():
-        # 针对当前行，计算 target_cols 在不同 scale 下的值
-        scaled_values = [[row[col] * s for s in scales] for col in target_cols]
-
-        # 笛卡尔积
-        combos = list(product(*scaled_values))
-
-        # 生成 DataFrame
-        expanded = pd.DataFrame(combos, columns=target_cols)
-
-        # 复制非 target 列
-        for col in dataset.columns:
-            if col not in target_cols:
-                expanded[col] = row[col]
-
-        expanded_rows.append(expanded)
-
-    # 合并所有行的扩展结果
-    expanded_dataset = pd.concat(expanded_rows, ignore_index=True)
-    return expanded_dataset
+def expand_dataset(dataset, target_cols, quantile_levels=[0.05,0.5,0.95]):
+    # 收集每列的分位值
+    col_values = [dataset[col].quantile(quantile_levels).values for col in target_cols]
+    # 全排列
+    combos = list(product(*col_values))
+    # 用 combos 构建 DataFrame
+    expanded = pd.DataFrame(combos, columns=target_cols)
+    # 复制 dataset 的其他列
+    non_target_cols = [c for c in dataset.columns if c not in target_cols]
+    for col in non_target_cols:
+        expanded[col] = dataset.iloc[0][col]
+    return expanded
 
 
 def search_parameters(
@@ -83,8 +73,9 @@ def search_parameters(
         predictions = regression_model.predict_inverse_transform(expanded_dataset)
 
         # 5. 选择最接近 target_value 的 num_candidates_per_round 条数据用于下一轮迭代
-        k = min(num_candidates_per_round, len(predictions))
-        top_idx = np.argsort(np.abs(predictions - target_value))[:k]
+        target_dim = len(target_cols)
+        desired_k = 2 if target_dim == 1 else num_candidates_per_round
+        top_idx = np.argsort(np.abs(predictions - target_value))[:desired_k]
         current_dataset = expanded_dataset.iloc[top_idx].copy()
         current_predictions = predictions[top_idx]
 
