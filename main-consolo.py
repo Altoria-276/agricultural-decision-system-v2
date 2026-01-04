@@ -1,24 +1,28 @@
-import re
-from matplotlib.pylab import f
-from shap import Explanation
+from pathlib import Path
+import shutil
 from configs import Config
 import pandas as pd
 import numpy as np
 
-from sklearn.preprocessing import StandardScaler
 from modules.data_filter import data_filter
 from modules.regression import find_best_model, RegressionModel, plot_multi_types
 from modules.select_matrix import SelectMatrix
-from modules.get_best_type import get_best_type
 from modules.search_parameters import search_parameters
 from modules.indicator_analysis import select_variables
 
 import warnings
 
+from utils.filepath import get_temp_path
+
 warnings.filterwarnings("ignore")
 
 
 def main():
+    # 删除 temp 目录下的所有文件和子目录
+    temp_dir = get_temp_path("temp/")
+    for file in temp_dir.iterdir():
+        shutil.rmtree(file)
+
     config = Config()
     filepath = config.get("datasets.path")
     sence_columns = config.get("datasets.sence_columns")
@@ -26,6 +30,15 @@ def main():
     type_columns = config.get("datasets.type_columns")
     result_columns = config.get("datasets.result_columns")
     init_data = config.get("init_data")  # 用户输入数据
+
+    select_path: Path = get_temp_path(config.get("output.select_csv_path"))
+    rmse_path: Path = get_temp_path(config.get("output.rmse_img_path"))
+    shap_path: Path = get_temp_path(config.get("output.shap_img_path"))
+    result_path: Path = get_temp_path(config.get("output.result_csv_path"))
+
+    num_k = 5
+
+    # 读取输入数据
     df = pd.read_excel(filepath)
 
     df = data_filter(df, sence_columns, init_data, config.get("filter_threshold"))  # 筛选相似数据
@@ -35,12 +48,12 @@ def main():
     print("各 Type 的数据量：")
     for t, cnt in type_counts.items():
         print(f"  - {t}: {cnt} 条")
-    invalid_types = type_counts[type_counts < 5].index.tolist()
+    invalid_types = type_counts[type_counts < num_k].index.tolist()
     if invalid_types:
-        print("以下 Type 数据不足 5 条，将被删除：", invalid_types)
+        print(f"以下 Type 数据不足 {num_k} 条，将被删除：", invalid_types)
     else:
         print("所有 Type 均满足数据量要求")
-    df = df.groupby(type_columns[0]).filter(lambda x: len(x) >= 5)
+    df = df.groupby(type_columns[0]).filter(lambda x: len(x) >= num_k)
     # 更新 types 列表
     types = sorted(df[type_columns[0]].unique().tolist())
     print("过滤后的有效 Type:", types)
@@ -71,67 +84,63 @@ def main():
         select_nums=config.get("select_variables_max_num"),
     )
 
-    while modified:
-        for type in types:
-            if not pre_select:
-                df_type = df[df[type_columns[0]] == type]
+    for type in types:
+        if not pre_select:
+            df_type = df[df[type_columns[0]] == type]
 
-                results, model_select, models = find_best_model(
-                    df_type,
-                    sence_columns + process_columns,
-                    result_columns,
-                    config.get("train.test_size"),
-                    config.get("train.random_state"),
-                )
-
-                type_models[type] = model_select
-
-                print(f"类型: {type}")
-                print(results)
-                print(f"最好的模型是: {model_select}")
-
-                # STEP 3
-                # TODO
-
-                corr = models[model_select].correlation_matrix()
-                shap_values = models[model_select].shap_importance().values
-
-                importances = np.abs(shap_values).mean(0)
-                indices = np.argsort(importances)[::-1]
-
-                sorted_columns = [(sence_columns + process_columns)[i] for i in indices]
-                sorted_importances = [importances[i] for i in indices]
-
-                all_feat = sence_columns + process_columns
-                sp_types = ["S" if c in sence_columns else "P" for c in all_feat]
-                selected_corr_matrix, selected_feature_names = select_variables(
-                    correlation_matrix=corr,
-                    shapley_values=shap_values,
-                    types=sp_types,
-                    variable_names=all_feat,
-                    m=config.get("select_variables_max_num"),  #
-                    threshold_t=config.get("select_variables_threshold"),
-                )
-
-                selectMatrix[type] = selected_feature_names
-
-            selected_colums = selectMatrix[type]
-            regression_model = RegressionModel(
-                type_models[type],
+            results, model_select, models = find_best_model(
                 df_type,
-                selected_colums,
+                sence_columns + process_columns,
                 result_columns,
                 config.get("train.test_size"),
                 config.get("train.random_state"),
             )
 
-            type_results[type] = regression_model.train_and_evaluate_model()
-            best_models[type] = regression_model  # 保存各类别最优模型
-            regression_model.plot_shap_importance()
+            type_models[type] = model_select
 
-        plot_multi_types(type_results)
-        pre_select = True
-        modified = selectMatrix.interactive_edit()
+            print("=" * 50)
+            print(f"类型: {type}")
+            print(results)
+            print(f"最好的模型是: {model_select}")
+
+            corr = models[model_select].correlation_matrix()
+            shap_values = models[model_select].shap_importance().values
+
+            importances = np.abs(shap_values).mean(0)
+            indices = np.argsort(importances)[::-1]
+
+            sorted_columns = [(sence_columns + process_columns)[i] for i in indices]
+            sorted_importances = [importances[i] for i in indices]
+
+            all_feat = sence_columns + process_columns
+            sp_types = ["S" if c in sence_columns else "P" for c in all_feat]
+            selected_corr_matrix, selected_feature_names = select_variables(
+                correlation_matrix=corr,
+                shapley_values=shap_values,
+                types=sp_types,
+                variable_names=all_feat,
+                m=config.get("select_variables_max_num"),  #
+                threshold_t=config.get("select_variables_threshold"),
+            )
+
+            selectMatrix[type] = selected_feature_names
+
+        selected_colums = selectMatrix[type]
+        regression_model = RegressionModel(
+            type_models[type],
+            df_type,
+            selected_colums,
+            result_columns,
+            config.get("train.test_size"),
+            config.get("train.random_state"),
+        )
+
+        type_results[type] = regression_model.train_and_evaluate_model()
+        best_models[type] = regression_model  # 保存各类别最优模型
+        regression_model.plot_shap_importance(f"{type}_shap_importance.png", shap_path)
+
+    plot_multi_types(type_results, rmse_path)
+    pre_select = True
 
     # v2 UPDATE
     # 最优模型选择被注释，对每个类型均进行最优参数搜索
@@ -140,16 +149,18 @@ def main():
     # best_type = get_best_type(best_models, types, type_columns, init_data, df)
     # print(f"最优的类型是: {best_type}")
 
-    # 获取用户输入 Y
-    while True:
-        try:
-            target_y_str = input("请输入目标值 Y: ")
-            target_y = float(target_y_str)
-            break
-        except ValueError:
-            print("无效输入，请输入一个数字。")
+    # 保存每个type选择的列名到CSV文件
+    select_columns_path: Path = get_temp_path(select_path) / "select_columns.csv"
 
-    # 搜索最优参数
+    # 创建一个DataFrame来存储每个type选择的列名
+    select_columns_data = {}
+    for type in types:
+        selected_cols = selectMatrix[type]
+        select_columns_data[type] = selected_cols
+
+    select_columns_df = pd.DataFrame.from_dict(select_columns_data, orient="index")
+    select_columns_df.to_csv(select_columns_path, index=True, encoding="utf-8")
+
     for type in types:
         df_best_type = df[df[type_columns[0]] == type].copy()  # 筛选最优类型数据
 
@@ -159,6 +170,7 @@ def main():
         multiplier = search_config.get("multiplier", 0.95)
         num_iter = search_config.get("num_iter", 4)
         num_candidates_per_round = search_config.get("num_candidates_per_round", 5)
+        target_y = search_config.get("target_number", 0.5)
 
         best_params_and_results = search_parameters(
             regression_model=best_models[type],
@@ -171,8 +183,12 @@ def main():
             num_iter=num_iter,
             num_candidates_per_round=num_candidates_per_round,
         )
-        search_result = "没有符合条件的数据" if best_params_and_results.empty else best_params_and_results.to_string(index=False)
-        print(f"类型 {type} 的最优参数组合及结果是:\n {search_result}")
+        search_result = "没有符合条件的结果" if best_params_and_results.empty else best_params_and_results.to_string(index=False)
+        print(f"类型 {type} ，最优参数组合及结果是:\n {search_result}")
+        print("=" * 50)
+
+        csv_path = result_path / f"{type}_best_params.csv"
+        best_params_and_results.to_csv(csv_path, index=False)
 
 
 if __name__ == "__main__":
