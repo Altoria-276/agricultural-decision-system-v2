@@ -166,6 +166,12 @@ def run(config: Config):
         for type in types:
             df_best_type = df[df[type_columns[0]] == type].copy()  # 筛选最优类型数据
 
+            target_cols = [col for col in best_models[type].feature if col in config.get("datasets.process_columns")]
+            uniq_combos = df_best_type[target_cols].drop_duplicates().shape[0] if target_cols else 0
+            if uniq_combos < 2:
+                print(f"[跳过] Type={type} 在 target_cols={target_cols} 上仅有 {uniq_combos} 种组合，至少需要 2 种才能进行 search_parameters。")
+                continue
+
             # 从配置文件中获取 search_parameters 相关参数
             search_config = config.get("search_parameters")
             threshold = search_config.get("threshold", 10)
