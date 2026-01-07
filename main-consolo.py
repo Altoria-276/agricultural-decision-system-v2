@@ -1,6 +1,6 @@
 from pathlib import Path
 import shutil
-from configs import Config
+from configs.config import Config
 import pandas as pd
 import numpy as np
 

@@ -44,15 +44,12 @@ def load_excel_columns(file_path):
 
 def parse_vector_input(vector_str):
     """解析用户输入的向量字符串"""
-    try:
-        # 尝试解析为Python列表格式
-        if vector_str.strip():
-            vector = ast.literal_eval(vector_str)
-            if isinstance(vector, list) and all(isinstance(x, (int, float)) for x in vector):
-                return vector
-        return None
-    except:
-        return None
+    # 尝试解析为Python列表格式
+    if vector_str.strip():
+        vector = ast.literal_eval(vector_str)
+        if isinstance(vector, list) and all(isinstance(x, (int, float)) for x in vector):
+            return vector
+    return None
 
 
 def run_system(excel_file_path, sence_columns, process_columns, type_columns, result_columns, init_vector_str, filter_threshold, search_threshold, search_num_iter, search_multiplier, search_candidates_per_round, search_target_number, select_threshold, select_max_num):
@@ -60,12 +57,12 @@ def run_system(excel_file_path, sence_columns, process_columns, type_columns, re
     try:
         # 验证输入
         if not excel_file_path or not Path(excel_file_path).exists():
-            return "请选择有效的Excel文件", None
+            return "请选择有效的Excel文件", None, "", {}, {}
 
         # 解析初始向量
         init_vector = parse_vector_input(init_vector_str)
         if init_vector is None:
-            return "请输入有效的初始向量（格式：[1, 2, 3, ...]）", None
+            return "请输入有效的初始向量（格式：[1, 2, 3, ...]）", None, "", {}, {}
 
         # 解析列选择 - Dropdown 多选返回列表，单选返回单个值或 None
         sence_cols = sence_columns if isinstance(sence_columns, list) else []
@@ -74,7 +71,7 @@ def run_system(excel_file_path, sence_columns, process_columns, type_columns, re
         result_cols = [result_columns] if result_columns else []
 
         if not all([sence_cols, process_cols, type_cols, result_cols]):
-            return "请选择所有必需的列（S、P、T、R）", None
+            return "请选择所有必需的列（S、P、T、R）", None, "", {}, {}
 
         # 创建配置
         config = Config()
@@ -105,14 +102,13 @@ def run_system(excel_file_path, sence_columns, process_columns, type_columns, re
             message += f"处理的数据类型: {result['types_processed']}\n"
             message += f"数据形状: {result['data_summary']}"
 
-            # 返回图像路径
-            image_path = result["rmse_image"]
-            return message, image_path
+            # 返回所有需要的结果
+            return (message, result["rmse_image"], result["filter_log"], result["shap_images"], result["best_params_results"])
         else:
-            return f"系统运行失败: {result['message']}", None
+            return f"系统运行失败: {result['message']}", None, "", {}, {}
 
     except Exception as e:
-        return f"运行错误: {str(e)}", None
+        return f"运行错误: {str(e)}", None, "", {}, {}
 
 
 def ui():
@@ -206,8 +202,8 @@ def ui():
                 tab2_next_button.click(fn=lambda: gr.update(selected="tab3"), outputs=tabs)
 
             # TAB 3: 运行和结果
-            with gr.Tab("运行结果", id="tab3"):
-                gr.Markdown("## 步骤3: 运行系统并查看结果")
+            with gr.Tab("运行控制", id="tab3"):
+                gr.Markdown("## 步骤3: 运行系统")
 
                 with gr.Row():
                     with gr.Column():
@@ -215,23 +211,123 @@ def ui():
 
                 with gr.Row():
                     with gr.Column():
-                        status_output = gr.Textbox(label="运行状态", lines=10, max_lines=15, info="显示系统运行状态和结果")
-
-                with gr.Row():
-                    with gr.Column():
-                        image_output = gr.Image(label="RMSE对比图")
+                        status_output = gr.Textbox(label="运行状态", lines=8, max_lines=15, info="显示系统运行状态和结果")
 
                 with gr.Row():
                     tab3_prev_button = gr.Button("上一步")
-
-                # 运行按钮事件
-                run_button.click(
-                    fn=run_system,
-                    inputs=[excel_file_output, sence_columns, process_columns, type_columns, result_columns, init_vector, filter_threshold, search_threshold, search_num_iter, search_multiplier, search_candidates_per_round, search_target_number, select_threshold, select_max_num],
-                    outputs=[status_output, image_output],
-                )
+                    tab3_next_button = gr.Button("下一步", variant="primary")
 
                 tab3_prev_button.click(fn=lambda: gr.update(selected="tab2"), outputs=tabs)
+                tab3_next_button.click(fn=lambda: gr.update(selected="tab4"), outputs=tabs)
+
+            # TAB 4: Type 筛选日志和 SHAP 图像
+            with gr.Tab("Type筛选与SHAP分析", id="tab4"):
+                gr.Markdown("## Type 筛选日志与 SHAP 重要性分析")
+
+                with gr.Row():
+                    with gr.Column():
+                        filter_log_output = gr.Textbox(label="Type 筛选日志", lines=12, max_lines=20, info="显示数据筛选过程和结果")
+
+                with gr.Row():
+                    with gr.Column():
+                        gr.Markdown("### SHAP 重要性图像选择")
+                        shap_type_selector = gr.Dropdown(choices=[], label="选择Type", info="选择要查看的Type的SHAP重要性图像")
+                        shap_display_output = gr.Image(label="SHAP 重要性图像")
+
+                with gr.Row():
+                    tab4_prev_button = gr.Button("上一步")
+                    tab4_next_button = gr.Button("下一步", variant="primary")
+
+                tab4_prev_button.click(fn=lambda: gr.update(selected="tab3"), outputs=tabs)
+                tab4_next_button.click(fn=lambda: gr.update(selected="tab5"), outputs=tabs)
+
+            # TAB 5: 最优参数结果
+            with gr.Tab("最优参数结果", id="tab5"):
+                gr.Markdown("## 各类别最优参数组合结果")
+
+                with gr.Row():
+                    with gr.Column():
+                        gr.Markdown("### 最优参数结果选择")
+                        params_type_selector = gr.Dropdown(choices=[], label="选择Type", info="选择要查看的Type的最优参数结果")
+                        params_display_output = gr.Dataframe(label="最优参数结果表格")
+
+                with gr.Row():
+                    tab5_prev_button = gr.Button("上一步")
+
+                tab5_prev_button.click(fn=lambda: gr.update(selected="tab4"), outputs=tabs)
+
+            # 运行按钮事件
+            filter_log_state = gr.State("")  # 筛选日志状态
+            shap_images_state = gr.State({})  # SHAP图像状态
+            best_params_state = gr.State({})  # 最优参数状态
+            rmse_image_state = gr.State(None)  # RMSE图像状态
+
+            run_button.click(
+                fn=run_system,
+                inputs=[excel_file_output, sence_columns, process_columns, type_columns, result_columns, init_vector, filter_threshold, search_threshold, search_num_iter, search_multiplier, search_candidates_per_round, search_target_number, select_threshold, select_max_num],
+                outputs=[status_output, rmse_image_state, filter_log_state, shap_images_state, best_params_state],
+            )
+
+            # 更新选择器选项和默认图像/表格
+            def update_shap_selector(shap_images):
+                if not shap_images:
+                    return gr.update(choices=[], value=None), gr.update(value=None)
+                types = list(shap_images.keys())
+                return gr.update(choices=types, value=types[0] if types else None), shap_images[types[0]] if types else None
+
+            def update_shap_image(type_name, shap_images):
+                if not type_name or type_name not in shap_images:
+                    return None
+                return shap_images[type_name]
+
+            def update_params_selector(best_params):
+                if not best_params:
+                    return gr.update(choices=[], value=None), gr.update(value=None)
+                types = list(best_params.keys())
+                if types and best_params[types[0]]:
+                    # 将字典列表转换为DataFrame可以显示的格式
+                    first_type_data = best_params[types[0]]
+                    if first_type_data:
+                        # 获取表头
+                        headers = list(first_type_data[0].keys()) if isinstance(first_type_data[0], dict) else []
+                        # 构建二维列表数据
+                        data = [[row[header] for header in headers] for row in first_type_data] if headers else first_type_data
+                        # 返回包含headers和data的字典
+                        return gr.update(choices=types, value=types[0] if types else None), {"headers": headers, "data": data}
+                return gr.update(choices=types, value=types[0] if types else None), None
+
+            def update_params_table(type_name, best_params):
+                if not type_name or type_name not in best_params:
+                    return None
+                type_data = best_params[type_name]
+                if not type_data:
+                    return None
+                # 将字典列表转换为DataFrame可以显示的格式
+                if isinstance(type_data[0], dict):
+                    # 获取表头
+                    headers = list(type_data[0].keys())
+                    # 构建二维列表数据
+                    data = [[row[header] for header in headers] for row in type_data]
+                    # 返回包含headers和data的字典
+                    return {"headers": headers, "data": data}
+                return type_data
+
+            # 监听状态变化，更新界面内容
+            filter_log_state.change(fn=lambda log: gr.update(value=log), inputs=filter_log_state, outputs=filter_log_output)
+
+            # 更新SHAP图像选择器和默认图像
+            shap_images_state.change(fn=update_shap_selector, inputs=shap_images_state, outputs=[shap_type_selector, shap_display_output])
+
+            # 根据选择器更新SHAP图像
+            shap_type_selector.change(fn=update_shap_image, inputs=[shap_type_selector, shap_images_state], outputs=shap_display_output)
+
+            # 更新最优参数选择器和默认表格
+            best_params_state.change(fn=update_params_selector, inputs=best_params_state, outputs=[params_type_selector, params_display_output])
+
+            # 根据选择器更新最优参数表格
+            params_type_selector.change(fn=update_params_table, inputs=[params_type_selector, best_params_state], outputs=params_display_output)
+
+            # 移除自动跳转，用户可通过下一步按钮手动切换
 
     return demo
 

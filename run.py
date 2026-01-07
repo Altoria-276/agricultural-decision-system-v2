@@ -61,21 +61,33 @@ def run(config: Config):
         # 数据筛选
         df = data_filter(df, sence_columns, init_data, filter_threshold)
 
+        # 收集筛选日志
+        filter_log = []
+        filter_log.append("各 Type 的数据量：")
+
         # 数量检测，删去数据量少于 3 的 type
         type_counts = df[type_columns[0]].value_counts()
         print("各 Type 的数据量：")
         for t, cnt in type_counts.items():
-            print(f"  - {t}: {cnt} 条")
+            log_line = f"  - {t}: {cnt} 条"
+            filter_log.append(log_line)
+            print(log_line)
         invalid_types = type_counts[type_counts < num_k].index.tolist()
         if invalid_types:
-            print(f"以下 Type 数据不足 {num_k} 条，将被删除：", invalid_types)
+            log_line = f"以下 Type 数据不足 {num_k} 条，将被删除：{invalid_types}"
+            filter_log.append(log_line)
+            print(log_line)
         else:
-            print("所有 Type 均满足数据量要求")
+            log_line = "所有 Type 均满足数据量要求"
+            filter_log.append(log_line)
+            print(log_line)
         df = df.groupby(type_columns[0]).filter(lambda x: len(x) >= num_k)
 
         # 更新 types 列表
         types = sorted(df[type_columns[0]].unique().tolist())
-        print("过滤后的有效 Type:", types)
+        log_line = f"过滤后的有效 Type: {types}"
+        filter_log.append(log_line)
+        print(log_line)
 
         if len(types) == 0:
             raise ValueError("筛选后没有有效的数据类型")
@@ -85,6 +97,8 @@ def run(config: Config):
         pre_select = False
 
         best_models = {}  # 保存各类别最优模型
+        shap_images = {}  # 保存各类别shap图像路径
+        best_params_results = {}  # 保存各类别最优参数结果
 
         selectMatrix = SelectMatrix(
             sence_columns,
@@ -146,7 +160,9 @@ def run(config: Config):
 
             type_results[type] = regression_model.train_and_evaluate_model()
             best_models[type] = regression_model  # 保存各类别最优模型
-            regression_model.plot_shap_importance(f"{type}_shap_importance.png", shap_path)
+            shap_img_name = f"{type}_shap_importance.png"
+            regression_model.plot_shap_importance(shap_img_name, shap_path)
+            shap_images[type] = str(shap_path / shap_img_name)
 
         plot_multi_types(type_results, rmse_path)
         pre_select = True
@@ -191,6 +207,9 @@ def run(config: Config):
                 num_iter=num_iter,
                 num_candidates_per_round=num_candidates_per_round,
             )
+            # 保存最优参数结果
+            best_params_results[type] = best_params_and_results
+
             search_result = "没有符合条件的结果" if best_params_and_results.empty else best_params_and_results.to_string(index=False)
             print(f"类型 {type} ，最优参数组合及结果是:\n {search_result}")
             print("=" * 50)
@@ -201,7 +220,24 @@ def run(config: Config):
         # 返回结果
         rmse_image_path = rmse_path / "multi_types_rmse.png"
 
-        return {"success": True, "message": "系统运行成功", "rmse_image": str(rmse_image_path) if rmse_image_path.exists() else None, "types_processed": types, "data_summary": {"total_types": len(types), "original_data_shape": df.shape, "filtered_data_shape": df.shape}}
+        # 转换最优参数结果为字典格式，方便前端展示
+        best_params_dict = {}
+        for type_name, params_df in best_params_results.items():
+            if not params_df.empty:
+                best_params_dict[type_name] = params_df.to_dict(orient="records")
+            else:
+                best_params_dict[type_name] = []
+
+        return {
+            "success": True,
+            "message": "系统运行成功",
+            "rmse_image": str(rmse_image_path) if rmse_image_path.exists() else None,
+            "types_processed": types,
+            "data_summary": {"total_types": len(types), "original_data_shape": df.shape, "filtered_data_shape": df.shape},
+            "filter_log": "\n".join(filter_log),
+            "shap_images": shap_images,
+            "best_params_results": best_params_dict,
+        }
 
     except Exception as e:
-        return {"success": False, "message": f"系统运行失败: {str(e)}", "rmse_image": None, "types_processed": [], "data_summary": {}}
+        return {"success": False, "message": f"系统运行失败: {str(e)}", "rmse_image": None, "types_processed": [], "data_summary": {}, "filter_log": "", "shap_images": {}, "best_params_results": {}}
